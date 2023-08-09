@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, Button } from "react-native";
 
 const LoginScreen = () => {
@@ -12,7 +12,7 @@ const LoginScreen = () => {
 
   return (
     <View className="items-center justify-center flex-1">
-      <Text className="mb-4 text-2xl">Đăng Nhập</Text>
+      <Text className="mb-4 text-2xl font-bold font-lexend">What's your email?</Text>
       <TextInput
         className="w-4/5 p-2 mb-4 border rounded"
         placeholder="Email"
@@ -26,7 +26,9 @@ const LoginScreen = () => {
         value={password}
         onChangeText={setPassword}
       />
-      <Button title="Đăng Nhập" onPress={handleLogin} />
+      <View className="px-4 py-2 rounded-md bg-darkGray">
+        <Button title="Đăng Nhập" onPress={handleLogin} />
+      </View>
     </View>
   );
 };
