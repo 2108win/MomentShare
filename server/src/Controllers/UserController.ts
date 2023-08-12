@@ -1,6 +1,23 @@
 import { NextFunction } from "express";
+import multer from 'multer';
 
 const User = require("../models/User");
+const imgStorage = multer.diskStorage({
+    //@ts-ignore
+    destination: function (req, file, cb) {
+        cb(null, 'imgs/avatars'); // Define where to store the avatar files
+    },
+    //@ts-ignore
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        const fileExtension = file.originalname.split('.').pop();
+        cb(null, 'avatar-' + uniqueSuffix + '.' + fileExtension);
+    }
+});
+
+// Initialize Multer for avatar uploads
+const uploadAvatar = multer({ storage: imgStorage }).single('avatar');
+
 
 export const getUserById = async (req: any, res: any, next: NextFunction, userId: string) => {
     try {
@@ -25,7 +42,29 @@ export const getUserById = async (req: any, res: any, next: NextFunction, userId
 exports.getAllUsers = async (req: any, res: any, next: any) => {
     try {
         const users = await User.find().sort("-createdAt").exec();
-        res.json(users);
+
+        console.log('Users: ', users);
+        const avatarBaseURL = 'http://localhost:8000/imgs/avatars';
+        // Modify each user to include the avatar URL
+        const usersWithAvatars = users.map((user: any) => {
+            // Construct the avatar URL based on the filename
+            console.log('user: ', user);
+
+            let avatarURL: any;
+            if (user.avatar) {
+                avatarURL = `${avatarBaseURL}/${user.avatar}`;
+            } else {
+                avatarURL = null;
+            }
+
+            // Include the avatar URL in the user data
+            return {
+                ...user.toObject(),
+                avatarURL: avatarURL
+            };
+        });
+
+        res.json(usersWithAvatars);
     } catch (error) {
         res.status(400).json(error);
         console.log("catch block error");
@@ -38,36 +77,65 @@ exports.getUser = (req: any, res: any) => {
     return res.json(req.user);
 };
 
-exports.createUser = async (req: any, res: any) => {
+export const createUser = async (req: any, res: any) => {
     try {
-        // Get JSON data from the frontend i.e., req.body
-        const user = new User(req.body);
+        // Use Multer middleware to handle avatar upload
+        uploadAvatar(req, res, async function (err) {
+            if (err) {
+                return res.status(400).json({
+                    error: 'Avatar upload error: ' + err.message
+                });
+            }
 
-        // Create a User instance by passing data from req.body
-        const savedUser = await user.save();
-        res.json({ user: savedUser });
+            // Get JSON data from the frontend i.e., req.body
+            const { name, email, password }: any = req.body;
+
+            // Create a User instance by passing data from req.body
+            const user = new User({
+                name,
+                email,
+                password,
+                avatar: req.file ? req.file.filename : '' // Set avatar filename if uploaded
+            });
+
+            const savedUser = await user.save();
+            res.json({ user: savedUser });
+        });
     } catch (err) {
         return res.status(400).json({
-            error: err.message,
+            error: err.message
         });
     }
 };
-
-exports.updateUser = async (req: any, res: any) => {
+export const updateUser = async (req: any, res: any) => {
     try {
-        // Take req.user from getUserById() middleware
-        const user = req.user;
+        // Use Multer middleware to handle avatar upload
+        uploadAvatar(req, res, async function (err) {
+            if (err) {
+                return res.status(400).json({
+                    error: 'Avatar upload error: ' + err.message
+                });
+            }
 
-        // Update user fields
-        user.name = req.body.name;
-        user.password = req.body.password;
-        user.email = req.body.email;
+            // Take req.user from getUserById() middleware
+            const user = req.user;
 
-        // Save the updated User
-        const updatedUser = await user.save();
+            // Update user fields
+            user.name = req.body.name;
+            user.password = req.body.password;
+            user.email = req.body.email;
 
-        // Send the updated User as a JSON response
-        res.json(updatedUser);
+            // Update avatar if uploaded
+            if (req.file) {
+                user.avatar = req.file.filename;
+            }
+
+            // Save the updated User
+            const updatedUser = await user.save();
+
+            // Send the updated User as a JSON response
+            res.json(updatedUser);
+        });
     } catch (err) {
         return res.status(400).json({
             error: err.message,

@@ -20,6 +20,7 @@ const User = new mongoose.Schema(
             trim: true,
             maxlength: 15
         },
+        avatar: String,
     }
 );
 

@@ -1,5 +1,7 @@
 export type UserType = {
-    name: string,
-    email: string,
-    password: string;
+    id: String,
+    name: String,
+    email: String,
+    password: String;
+    avatar: String;
 };
